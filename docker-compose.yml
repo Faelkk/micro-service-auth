@@ -1,0 +1,46 @@
+
+services:
+  dbsql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: shop_trybe_db
+    networks:
+      - minha-rede
+    ports:
+      - 1433:1433
+    environment:
+      - ACCEPT_EULA=${ACCEPT_EULA}
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_PID=${MSSQL_PID}
+
+  auth.api:
+    container_name: auth.api
+    build: ./Auth.API
+    ports:
+      - 5010:5010
+    depends_on:
+      - dbsql
+    environment:
+      - APIPORT=${APIPORT}
+      - DBSERVER=${DBSERVER}
+      - DBNAME=${DBNAME}
+      - DBUSER=${DBUSER}
+      - DBPASSWORD=${DBPASSWORD}
+      - MESSAGE_BROKER_HOST=${MESSAGE_BROKER_HOST}
+    networks:
+      - minha-rede
+
+  notification.service:
+    container_name: notification.service
+    build: ./Notification.Service
+    environment:
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - MESSAGE_BROKER_HOST=${MESSAGE_BROKER_HOST}
+    networks:
+      - minha-rede
+
+networks:
+  minha-rede:
+    driver: bridge
