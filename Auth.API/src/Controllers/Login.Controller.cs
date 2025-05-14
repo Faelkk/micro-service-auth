@@ -1,5 +1,3 @@
-
-
 using Microsoft.AspNetCore.Mvc;
 using Auth.API.Repository;
 using Auth.API.DTO;
@@ -7,13 +5,10 @@ using Auth.API.Models;
 using Auth.API.Services;
 using Google.Apis.Auth;
 
-
 namespace Auth.API.Controllers;
-
 
 [ApiController]
 [Route("login")]
-
 public class LoginController : Controller
 {
     private readonly IUserRepository userRepository;
@@ -27,29 +22,15 @@ public class LoginController : Controller
         this._tokenGenerator = tokenGenerator;
     }
 
-
     [HttpPost]
     public IActionResult Login([FromBody] LoginDto userLoginData)
     {
-
         try
         {
             var userLogged = userRepository.Login(userLoginData);
 
-            var UserAgent = HttpContext.Request.Headers.UserAgent;
-            var dateTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-            var messageText = "<h4>Novo login realizado no ShopTrybe </h4>";
-            messageText += "<p> Origem: " + UserAgent;
-            messageText += "<br /> Data: " + dateTime + "</p>";
-            messageText += "<p> Caso não reconheça este login, revise seus dados de autenticação.</p>";
-
-            Message message = new Message
-            {
-                Title = "Shop Trybe - Novo login",
-                Text = messageText,
-                MailTo = userLoginData.email
-            };
-            notificationService.Send(message);
+            // ✅ Usando o método auxiliar para enviar notificação
+            SendLoginNotification(userLoginData.email);
 
             var token = _tokenGenerator.Generate(userLogged);
 
@@ -57,10 +38,9 @@ public class LoginController : Controller
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = ex.Message.ToString() });
+            return BadRequest(new { message = ex.Message });
         }
     }
-
 
     [HttpPost("login-google")]
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto googleLoginDto)
@@ -85,6 +65,8 @@ public class LoginController : Controller
                 var createdUser = userRepository.Create(newUser);
                 var tokenNew = _tokenGenerator.Generate(createdUser);
 
+                SendLoginNotification(payload.Email);
+
                 return Ok(new { token = tokenNew });
             }
 
@@ -95,7 +77,10 @@ public class LoginController : Controller
                 Email = user.Email,
                 Role = "Client"
             };
+
             var token = _tokenGenerator.Generate(userDto);
+
+            SendLoginNotification(payload.Email);
 
             return Ok(new { token });
         }
@@ -107,5 +92,22 @@ public class LoginController : Controller
         }
     }
 
+    private void SendLoginNotification(string email)
+    {
+        var userAgent = HttpContext.Request.Headers.UserAgent;
+        var dateTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
 
+        var messageText = "<h4>Novo login realizado no ShopTrybe</h4>";
+        messageText += $"<p>Origem: {userAgent}<br />Data: {dateTime}</p>";
+        messageText += "<p>Caso não reconheça este login, revise seus dados de autenticação.</p>";
+
+        Message message = new Message
+        {
+            Title = "Shop Trybe - Novo login",
+            Text = messageText,
+            MailTo = email
+        };
+
+        notificationService.Send(message);
+    }
 }
