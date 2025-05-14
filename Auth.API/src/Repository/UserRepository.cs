@@ -21,7 +21,13 @@ public class UserRepository : IUserRepository
     public IEnumerable<UserResponseDto> GetAll()
     {
         var users = databaseContext.Users
-       .Select(user => new UserResponseDto { UserId = user.UserId, Email = user.Email, Name = user.Name })
+       .Select(user => new UserResponseDto
+       {
+           UserId = user.UserId,
+           Email = user.Email,
+           Name = user.Name,
+           Role = user.Role
+       })
        .ToList();
 
         if (!users.Any())
@@ -37,7 +43,7 @@ public class UserRepository : IUserRepository
     {
         var user = databaseContext.Users
             .Where(user => user.UserId == userId)
-            .Select(user => new UserResponseDto { UserId = user.UserId, Email = user.Email, Name = user.Name })
+            .Select(user => new UserResponseDto { UserId = user.UserId, Email = user.Email, Name = user.Name, Role = user.Role })
             .FirstOrDefault();
 
         if (user == null)

@@ -9,8 +9,7 @@ using System.Security.Claims;
 using Auth.API.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-
-
+using Auth.API.Data;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,21 +34,26 @@ var tokenOptions = builder.Configuration.GetSection(Auth.API.Services.TokenOptio
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    options.SaveToken = true;
-    options.RequireHttpsMetadata = false;
-    options.TokenValidationParameters = new TokenValidationParameters()
+    var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY");
+    if (string.IsNullOrEmpty(jwtKey))
     {
-        ValidateIssuer = false,
-        ValidateAudience = false,
+        throw new Exception("JWT key is missing");
+    }
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(tokenOptions.GetValue<string>("Secret")))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateIssuer = false,
+        ValidateAudience = false
     };
 });
+
 
 builder.Services.AddAuthorization(options =>
 {
@@ -68,37 +72,15 @@ builder.WebHost.UseUrls($"http://*:{port}");
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-    db.Database.Migrate();
+DatabaseSeeder.ApplyMigrationsAndSeed(app.Services);
 
-
-    var adminExists = db.Users.Any(u => u.Email == "admin@example.com");
-    if (!adminExists)
-    {
-        var admin = new User
-        {
-            Name = "Admin",
-            Email = "admin@example.com",
-            Role = "Admin"
-        };
-
-        var hasher = new PasswordHasher<User>();
-        admin.Password = hasher.HashPassword(admin, "admin123");
-
-        db.Users.Add(admin);
-        db.SaveChanges();
-    }
-}
-
-// Configure pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

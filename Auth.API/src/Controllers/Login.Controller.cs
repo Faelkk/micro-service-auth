@@ -5,6 +5,7 @@ using Auth.API.Repository;
 using Auth.API.DTO;
 using Auth.API.Models;
 using Auth.API.Services;
+using Google.Apis.Auth;
 
 
 namespace Auth.API.Controllers;
@@ -59,5 +60,52 @@ public class LoginController : Controller
             return BadRequest(new { message = ex.Message.ToString() });
         }
     }
+
+
+    [HttpPost("login-google")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto googleLoginDto)
+    {
+        try
+        {
+            var payload = await GoogleJsonWebSignature.ValidateAsync(googleLoginDto.IdToken);
+
+            var user = await userRepository.GetUserByEmail(payload.Email);
+
+            if (user == null)
+            {
+                var userName = string.IsNullOrEmpty(payload.Name) ? "Unknown" : payload.Name;
+
+                var newUser = new UserInsertDto
+                {
+                    email = payload.Email,
+                    name = userName,
+                    password = Guid.NewGuid().ToString(),
+                };
+
+                var createdUser = userRepository.Create(newUser);
+                var tokenNew = _tokenGenerator.Generate(createdUser);
+
+                return Ok(new { token = tokenNew });
+            }
+
+            var userDto = new UserResponseDto
+            {
+                UserId = user.UserId,
+                Name = user.Name,
+                Email = user.Email,
+                Role = "Client"
+            };
+            var token = _tokenGenerator.Generate(userDto);
+
+            return Ok(new { token });
+        }
+        catch (Exception ex)
+        {
+            var innerException = ex.InnerException != null ? ex.InnerException.Message : "No inner exception";
+
+            return BadRequest(new { message = "Erro ao autenticar com o Google: " + ex.Message, innerException });
+        }
+    }
+
 
 }

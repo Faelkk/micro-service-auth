@@ -39,7 +39,7 @@ public class UserController : Controller
     public IActionResult Get()
     {
 
-        // return Ok(new { message = "Teste", users });
+
         try
         {
 
