@@ -21,14 +21,16 @@ public class UserRepository : IUserRepository
     public IEnumerable<UserResponseDto> GetAll()
     {
         var users = databaseContext.Users
-       .Select(user => new UserResponseDto
-       {
-           UserId = user.UserId,
-           Email = user.Email,
-           Name = user.Name,
-           Role = user.Role
-       })
-       .ToList();
+    .Select(user => new UserResponseDto
+    {
+        UserId = user.UserId,
+        Email = user.Email,
+        Name = user.Name,
+        Role = user.Role,
+        IsTwoFactorEnabled = user.IsTwoFactorEnabled
+
+    })
+    .ToList();
 
         if (!users.Any())
         {
@@ -43,7 +45,7 @@ public class UserRepository : IUserRepository
     {
         var user = databaseContext.Users
             .Where(user => user.UserId == userId)
-            .Select(user => new UserResponseDto { UserId = user.UserId, Email = user.Email, Name = user.Name, Role = user.Role })
+            .Select(user => new UserResponseDto { UserId = user.UserId, Email = user.Email, Name = user.Name, Role = user.Role, IsTwoFactorEnabled = user.IsTwoFactorEnabled })
             .FirstOrDefault();
 
         if (user == null)
@@ -62,8 +64,13 @@ public class UserRepository : IUserRepository
             throw new Exception("Email already in use");
         }
 
-        var newUser = new User { Email = userData.email, Name = userData.name, Role = "Client" };
+
+
+        var newUser = new User { Email = userData.email, Name = userData.name, Role = "Client", IsTwoFactorEnabled = false };
         newUser.Password = passwordHasher.HashPassword(newUser, userData.password);
+
+        Console.WriteLine(newUser.Password, "user data", userData.password);
+
 
         databaseContext.Users.Add(newUser);
         databaseContext.SaveChanges();
@@ -85,7 +92,7 @@ public class UserRepository : IUserRepository
             throw new Exception("Invalid password");
         }
 
-        return new UserResponseDto { UserId = user.UserId, Name = user.Name, Email = user.Email, Role = user.Role };
+        return new UserResponseDto { UserId = user.UserId, Name = user.Name, Email = user.Email, Role = user.Role, IsTwoFactorEnabled = user.IsTwoFactorEnabled };
     }
 
     public async Task Remove(int id)
@@ -142,6 +149,64 @@ public class UserRepository : IUserRepository
         user.Password = passwordHasher.HashPassword(user, newPassword);
         databaseContext.Users.Update(user);
         await databaseContext.SaveChangesAsync();
+    }
+
+    public async Task<string> GenerateAndSaveTwoFactorCode(string email)
+    {
+        var user = await databaseContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null) throw new Exception("Usuário não encontrado");
+
+        var code = new Random().Next(100000, 999999).ToString();
+        user.TwoFactorCode = code;
+        user.TwoFactorExpiresAt = DateTime.UtcNow.AddMinutes(5);
+
+        await databaseContext.SaveChangesAsync();
+        return code;
+    }
+
+    public async Task<UserResponseDto> VerifyTwoFactorCode(string email, string code)
+    {
+        var user = await databaseContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !user.IsTwoFactorEnabled)
+            throw new Exception("Usuário inválido");
+
+        if (user.TwoFactorCode != code || user.TwoFactorExpiresAt < DateTime.UtcNow)
+            throw new Exception("Código inválido ou expirado");
+
+        user.TwoFactorCode = null;
+        user.TwoFactorExpiresAt = null;
+
+        await databaseContext.SaveChangesAsync();
+        return new UserResponseDto
+        {
+            UserId = user.UserId,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsTwoFactorEnabled = user.IsTwoFactorEnabled,
+            TwoFactorCode = user.TwoFactorCode,
+            TwoFactorExpiresAt = user.TwoFactorExpiresAt
+        };
+    }
+
+    public async Task<UserResponseDto> EnableTwoFactorCode(string email, bool enableTwoFactorCode)
+    {
+        var user = await databaseContext.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null) throw new Exception("Usuário não encontrado");
+
+        user.IsTwoFactorEnabled = enableTwoFactorCode;
+        databaseContext.Users.Update(user);
+        var rowsAffected = await databaseContext.SaveChangesAsync();
+        return new UserResponseDto
+        {
+            UserId = user.UserId,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsTwoFactorEnabled = user.IsTwoFactorEnabled,
+            TwoFactorCode = user.TwoFactorCode,
+            TwoFactorExpiresAt = user.TwoFactorExpiresAt
+        };
     }
 
 

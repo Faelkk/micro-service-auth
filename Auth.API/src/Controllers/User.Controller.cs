@@ -38,17 +38,13 @@ public class UserController : Controller
     [Authorize(Policy = "Admin")]
     public IActionResult Get()
     {
-
-
         try
         {
-
             var users = userRepository.GetAll();
             return Ok(users);
         }
         catch (Exception Err)
         {
-            Console.WriteLine("Erro ao buscar usuários: " + Err.ToString());
             return BadRequest(new { message = Err.Message.ToString() });
         }
     }

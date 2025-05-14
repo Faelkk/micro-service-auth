@@ -4,6 +4,9 @@ using Auth.API.DTO;
 using Auth.API.Models;
 using Auth.API.Services;
 using Google.Apis.Auth;
+using Auth.API.Context;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Auth.API.Controllers;
 
@@ -23,14 +26,33 @@ public class LoginController : Controller
     }
 
     [HttpPost]
-    public IActionResult Login([FromBody] LoginDto userLoginData)
+    public async Task<IActionResult> Login([FromBody] LoginDto userLoginData)
     {
         try
         {
             var userLogged = userRepository.Login(userLoginData);
 
-            // ✅ Usando o método auxiliar para enviar notificação
+
             SendLoginNotification(userLoginData.email);
+
+            if (userLogged.IsTwoFactorEnabled)
+            {
+                var code = await userRepository.GenerateAndSaveTwoFactorCode(userLogged.Email);
+
+                await notificationService.Send(new Message
+                {
+                    Title = "Código de verificação",
+                    Text = $"Seu código de verificação é: <b>{code}</b>",
+                    MailTo = userLogged.Email
+                });
+
+                return Ok(new
+                {
+                    message = "Autenticação de dois fatores habilitada. Código enviado.",
+                    email = userLogged.Email
+                });
+            }
+
 
             var token = _tokenGenerator.Generate(userLogged);
 
@@ -91,6 +113,48 @@ public class LoginController : Controller
             return BadRequest(new { message = "Erro ao autenticar com o Google: " + ex.Message, innerException });
         }
     }
+
+
+
+    [HttpPatch("enable-2fa")]
+    [Authorize(Policy = "Authenticated")]
+    public async Task<IActionResult> EnableTwoFa([FromBody] EnableTwoFaDto enableTwoFaDto)
+    {
+        try
+        {
+            var updatedUser = await userRepository.EnableTwoFactorCode(enableTwoFaDto.Email, enableTwoFaDto.IsTwoFactorEnabled);
+
+            return Ok(new
+            {
+                message = "Autenticação de dois fatores atualizada",
+                user = updatedUser
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+
+
+
+    [HttpPost("verify-2fa")]
+    public async Task<IActionResult> VerifyTwoFactorCode([FromBody] TwoFactorDto dto)
+    {
+        try
+        {
+            var user = await userRepository.VerifyTwoFactorCode(dto.Email, dto.Code);
+            var token = _tokenGenerator.Generate(user);
+            return Ok(new { token });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+
 
     private void SendLoginNotification(string email)
     {

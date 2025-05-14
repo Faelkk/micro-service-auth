@@ -23,5 +23,14 @@ namespace Auth.API.Models
         [Required(ErrorMessage = "O papel (role) é obrigatório.")]
         [StringLength(50, ErrorMessage = "O papel (role) não pode ter mais de 50 caracteres.")]
         public string Role { get; set; }
+
+        [Required]
+        public bool IsTwoFactorEnabled { get; set; }
+
+        [StringLength(6, ErrorMessage = "O código de 2FA deve ter no máximo 6 caracteres.")]
+        public string? TwoFactorCode { get; set; }
+
+        [DataType(DataType.DateTime)]
+        public DateTime? TwoFactorExpiresAt { get; set; }
     }
 }

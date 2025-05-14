@@ -16,7 +16,13 @@ public class UserResponseDto
 
     public string Role { get; set; }
 
+    public bool IsTwoFactorEnabled { get; set; }
+
+    public string TwoFactorCode { get; set; }
+
+    public DateTime? TwoFactorExpiresAt { get; set; }
 }
+
 
 public class UserInsertDto
 {

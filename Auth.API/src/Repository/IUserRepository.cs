@@ -17,4 +17,8 @@ public interface IUserRepository
     Task RemovePasswordResetToken(PasswordResetToken token);
     Task UpdateUserPassword(User user, string newPassword);
     Task<User> GetUserByEmail(string email);
+    Task<string> GenerateAndSaveTwoFactorCode(string email);
+    Task<UserResponseDto> VerifyTwoFactorCode(string email, string code);
+
+    Task<UserResponseDto> EnableTwoFactorCode(string email, bool enableTwoFactorCode);
 }

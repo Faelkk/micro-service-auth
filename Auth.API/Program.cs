@@ -29,7 +29,6 @@ builder.Services.Configure<Auth.API.Services.TokenOptions>(
     builder.Configuration.GetSection(Auth.API.Services.TokenOptions.Token)
 );
 
-
 var tokenOptions = builder.Configuration.GetSection(Auth.API.Services.TokenOptions.Token);
 
 builder.Services.AddAuthentication(options =>
@@ -39,8 +38,9 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY");
-    if (string.IsNullOrEmpty(jwtKey))
+    var key = builder.Configuration["Token:Secret"] ?? Environment.GetEnvironmentVariable("JWT_KEY");
+
+    if (string.IsNullOrEmpty(key))
     {
         throw new Exception("JWT key is missing");
     }
@@ -48,7 +48,7 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
         ValidateIssuer = false,
         ValidateAudience = false
     };
@@ -59,9 +59,9 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Admin", policy =>
         policy.RequireClaim(ClaimTypes.Role, "Admin"));
-
+    options.AddPolicy("Authenticated", policy =>
+        policy.RequireAuthenticatedUser());
 });
-
 
 builder.Services.AddOpenApi();
 
