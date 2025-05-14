@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   dbsql:
@@ -16,7 +17,7 @@ services:
     container_name: auth.api
     build: ./Auth.API
     ports:
-      - 5010:5010
+      - ${APIPORT}:${APIPORT}
     depends_on:
       - dbsql
     environment:
@@ -26,6 +27,15 @@ services:
       - DBUSER=${DBUSER}
       - DBPASSWORD=${DBPASSWORD}
       - MESSAGE_BROKER_HOST=${MESSAGE_BROKER_HOST}
+    networks:
+      - minha-rede
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - "15672:15672"  
+      - "5672:5672"    
     networks:
       - minha-rede
 

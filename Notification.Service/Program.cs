@@ -69,13 +69,15 @@ namespace Notification.Service
 
                 waitHandle.WaitOne();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 Console.WriteLine("Error on connect to rabbitmq");
+                Console.WriteLine("Exception: " + ex.ToString());
                 Console.WriteLine("Trying reconnect");
                 Thread.Sleep(5000);
                 goto Inicio;
             }
+
         }
     }
 }
