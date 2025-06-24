@@ -1,10 +1,10 @@
-// Auth.API.Controllers/User/UserController.cs
 using Auth.API.DTO;
 using Auth.API.Models;
 using Auth.API.Repository;
 using Microsoft.AspNetCore.Mvc;
 using Auth.API.Services;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Auth.API.Controllers;
 
@@ -18,23 +18,20 @@ public class UserController : Controller
     private readonly IPasswordService passwordService;
     private readonly TokenGenerator _tokenGenerator;
 
-    public UserController(IUserRepository userRepository, INotificationService notificationService, IPasswordService passwordService, TokenGenerator tokenGenerator)
+    private readonly ITokenService _tokenService;
+
+    public UserController(IUserRepository userRepository, INotificationService notificationService, IPasswordService passwordService, TokenGenerator tokenGenerator, ITokenService tokenService)
     {
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.passwordService = passwordService;
         this._tokenGenerator = tokenGenerator;
-    }
-
-    [HttpGet("teste")]
-
-    public IActionResult Teste()
-    {
-        return Ok(new { message = "Teste" });
+        this._tokenService = tokenService;
     }
 
 
     [HttpGet("")]
+    [Authorize(Policy = "Authenticated")]
     [Authorize(Policy = "Admin")]
     public IActionResult Get()
     {
@@ -50,6 +47,7 @@ public class UserController : Controller
     }
 
     [HttpGet("{id}")]
+    [Authorize(Policy = "Authenticated")]
     [Authorize(Policy = "Admin")]
     public IActionResult GetById(int id)
     {
@@ -63,6 +61,35 @@ public class UserController : Controller
             return BadRequest(new { message = Err.Message.ToString() });
         }
     }
+
+    [Authorize]
+    [HttpGet("validate-token")]
+    public IActionResult ValidateToken()
+    {
+        return Ok(new { message = "Token válido." });
+    }
+
+
+
+    [Authorize]
+    [HttpGet("get-user-by-token")]
+    public IActionResult GetUserByToken()
+    {
+        var user = HttpContext.User;
+
+        var name = user.FindFirst(ClaimTypes.Name)?.Value;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value;
+        var role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        return Ok(new
+        {
+            name,
+            email,
+            role
+        });
+    }
+
+
 
     [HttpPost]
     public IActionResult Create([FromBody] UserInsertDto userData)
@@ -98,6 +125,7 @@ public class UserController : Controller
 
     [HttpDelete("{id}")]
     [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "Authenticated")]
     public async Task<IActionResult> Remove(int id)
     {
         try
