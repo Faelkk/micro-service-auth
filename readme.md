@@ -20,6 +20,12 @@ Banco de Dados: Utiliza MySQL para armazenar os dados dos usuários e outras inf
 - [RabbitMQ](https://www.rabbitmq.com/)
 - [SqlServer](https://www.microsoft.com/pt-br/sql-server/sql-server-downloads)
 
+## Documentação
+
+Api Documentada via OpenApi.
+![Swagger UI](./docs/images/swagger.png)
+![Swagger UI](./docs/images/swagger2.png)
+
 🔋 **Controle de versão e deploy**
 
 - [Git](https://git-scm.com)
