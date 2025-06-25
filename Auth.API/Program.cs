@@ -30,6 +30,7 @@ builder.Services.Configure<Auth.API.Services.TokenOptions>(
     builder.Configuration.GetSection(Auth.API.Services.TokenOptions.Token)
 );
 
+
 var tokenOptions = builder.Configuration.GetSection(Auth.API.Services.TokenOptions.Token);
 
 builder.Services.AddAuthentication(options =>
@@ -72,6 +73,15 @@ builder.WebHost.UseUrls($"http://*:{port}");
 
 
 var app = builder.Build();
+
+app.UseCors(builder =>
+{
+    builder
+        .WithOrigins("http://localhost:4200")
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+});
+
 
 DatabaseSeeder.ApplyMigrationsAndSeed(app.Services);
 

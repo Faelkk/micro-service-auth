@@ -66,7 +66,7 @@ public class UserController : Controller
     [HttpGet("validate-token")]
     public IActionResult ValidateToken()
     {
-        return Ok(new { message = "Token válido." });
+        return Ok(new { isValid = true });
     }
 
 
@@ -172,6 +172,4 @@ public class UserController : Controller
             return BadRequest(new { message = Err.Message.ToString() });
         }
     }
-
-
 }
