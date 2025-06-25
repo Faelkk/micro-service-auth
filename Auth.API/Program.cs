@@ -1,15 +1,12 @@
 using System.Text;
 using Auth.API.Repository;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Auth.API.Models;
 using Auth.API.Services;
 using System.Security.Claims;
 using Auth.API.Context;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using Auth.API.Data;
+using Microsoft.OpenApi.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,10 +64,24 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddOpenApi();
 
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Micro-serice-auth-api",
+        Version = "v1",
+        Description = "Micro-Service-Auth API - Authentication service using JWT and RabbitMQ notifications.",
+        Contact = new OpenApiContact
+        {
+            Name = "Rafael Achtenberg",
+            Email = "achtenberg.rafa@gmail.com",
+            Url = new Uri("https://github.com/Faelkk")
+        }
+    });
+});
+
 var port = builder.Configuration["APIPORT"];
 builder.WebHost.UseUrls($"http://*:{port}");
-
-
 
 var app = builder.Build();
 
@@ -83,12 +94,19 @@ app.UseCors(builder =>
 });
 
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Library Management API v1");
+});
+
+
 DatabaseSeeder.ApplyMigrationsAndSeed(app.Services);
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+
+
+
+
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
